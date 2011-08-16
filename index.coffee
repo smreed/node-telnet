@@ -50,11 +50,14 @@ class IACState extends EventEmitter
       if @inAction
         if @inAction is constants.SB
           if b is constants.SE
-            @emit 'iac_sb', @bytes()
-            @inSB = false
+            chunk = @bytes()
+            # TODO : assert last byte is IAC
+            @emit 'iac_sb', chunk.slice 0, chunk.length - 1
+            @inSB = @inIAC = false
           else
             @buffer.push b
         else
+          @buffer.push @inAction
           @buffer.push b
           @emit 'iac', @bytes()
           @inAction = null
@@ -69,19 +72,32 @@ class IACState extends EventEmitter
       @buffer.push b
 
 class TelnetServer extends EventEmitter
-  constructor: (socket) ->
+  constructor: (socket, options = {}) ->
     state = new IACState()
     state.on 'data', (chunk) =>
       @emit 'data', chunk
     state.on 'iac', (command) ->
       console.log 'command', (names[b] for b in command)
+      if command[0] is constants.WONT and command[1] is constants.NAWS
+        options.setClientSize? {width: -1, height: -1}
     state.on 'iac_sb', (command) ->
       console.log 'got iac sb hex=', command.toString('hex'), ' ascii=', command.toString('ascii')
+      if command[0] is constants.NAWS
+        width = command[1] << 8
+        width |= command[2]
+        height = command[3] << 8
+        height |= command[4]
+        options.setClientSize? {width: width, height: height}
+
     socket.on 'data', (chunk) =>
       state.readBytes chunk
 
+    if typeof options.setClientSize is 'function'
+      socket.write new Buffer [ constants.IAC, constants.DO, constants.NAWS ]
+
 server = net.createServer (socket) ->
-  telnet = new TelnetServer socket
+  telnet = new TelnetServer socket,
+    setClientSize: (dim) -> console.log JSON.stringify dim
   telnet.on 'data', (data) ->
     console.log 'Read data: hex=', data.toString('hex'), ' ascii=', data.toString('ascii')
 
