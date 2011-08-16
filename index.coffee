@@ -32,7 +32,6 @@ class IACState extends EventEmitter
   constructor: ->
     @buffer = []
     @inIAC = false
-    @inSB = false
     @inAction = null
 
   bytes: (clear = true) -> 
@@ -46,6 +45,7 @@ class IACState extends EventEmitter
     @emit 'data', chunk if chunk.length
 
   readByte: (b) ->
+    # console.log 'byte', b, 'iac', @inIAC, 'action', @inAction
     if @inIAC
       if @inAction
         if @inAction is constants.SB
@@ -53,7 +53,8 @@ class IACState extends EventEmitter
             chunk = @bytes()
             # TODO : assert last byte is IAC
             @emit 'iac_sb', chunk.slice 0, chunk.length - 1
-            @inSB = @inIAC = false
+            @inIAC = false
+            @inAction = null
           else
             @buffer.push b
         else
@@ -81,7 +82,7 @@ class TelnetServer extends EventEmitter
       if command[0] is constants.WONT and command[1] is constants.NAWS
         options.setClientSize? {width: -1, height: -1}
     state.on 'iac_sb', (command) ->
-      console.log 'got iac sb hex=', command.toString('hex'), ' ascii=', command.toString('ascii')
+      # console.log 'got iac sb hex=', command.toString('hex') #, ' ascii=', command.toString('ascii')
       if command[0] is constants.NAWS
         width = command[1] << 8
         width |= command[2]
@@ -99,6 +100,6 @@ server = net.createServer (socket) ->
   telnet = new TelnetServer socket,
     setClientSize: (dim) -> console.log JSON.stringify dim
   telnet.on 'data', (data) ->
-    console.log 'Read data: hex=', data.toString('hex'), ' ascii=', data.toString('ascii')
+    # console.log 'Read data: hex=', data.toString('hex') #, ' ascii=', data.toString('ascii')
 
 server.listen 8888
