@@ -87,8 +87,7 @@ class TelnetServer extends EventEmitter
     @echo = false
     state = new IACState()
 
-    state.on 'data', (chunk) =>
-      @emit 'data', chunk
+    # socket.setNoDelay true
 
     onCommand = (command) =>
       console.log 'command', (commandName b for b in command)
@@ -109,14 +108,17 @@ class TelnetServer extends EventEmitter
         @echo = false
         sendCommand socket, constants.IAC, constants.WONT, constants.ECHO
       if commandIs command, constants.DO, constants.SGA
-        sendCommand socket, constants.IAC, constants.WONT, constants.SGA
+        sendCommand socket, constants.IAC, constants.WILL, constants.SGA
 
     state.on 'iac', onCommand
     state.on 'iac_sb', onCommand
 
     socket.on 'data', (chunk) ->
       state.readBytes chunk
-
+    
+    state.on 'data', (chunk) =>
+      @emit 'data', chunk
+    
     state.on 'data', (chunk) =>
       if @echoOn()
         socket.write chunk
