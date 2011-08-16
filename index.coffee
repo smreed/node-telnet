@@ -85,6 +85,7 @@ commandName = (b) ->
 class TelnetServer extends EventEmitter
   constructor: (socket, options = {}) ->
     @echo = false
+    @ttypes = []
     state = new IACState()
 
     # socket.setNoDelay true
@@ -109,6 +110,16 @@ class TelnetServer extends EventEmitter
         sendCommand socket, constants.IAC, constants.WONT, constants.ECHO
       if commandIs command, constants.DO, constants.SGA
         sendCommand socket, constants.IAC, constants.WILL, constants.SGA
+      if commandIs command, constants.WILL, constants.TTYPE
+        sendCommand socket, constants.IAC, constants.SB, constants.TTYPE, constants.ECHO, constants.IAC, constants.SE
+      if commandIs command, constants.TTYPE, constants.BINARY
+        ttype = command.slice(2, command.length).toString 'ascii'
+        if @ttypes[@ttypes.length-1] is ttype
+          console.log @ttypes
+        else
+          @ttypes.push ttype
+          sendCommand socket, constants.IAC, constants.SB, constants.TTYPE, constants.ECHO, constants.IAC, constants.SE
+
 
     state.on 'iac', onCommand
     state.on 'iac_sb', onCommand
@@ -125,6 +136,8 @@ class TelnetServer extends EventEmitter
 
     if typeof options.setClientSize is 'function'
       sendCommand socket, constants.IAC, constants.DO, constants.NAWS
+
+    sendCommand socket, constants.IAC, constants.DO, constants.TTYPE 
 
   echoOn: -> @echo
   echoOff: -> !@echo
