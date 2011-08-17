@@ -82,6 +82,7 @@ commandName = (b) ->
   names[b] ? b
 
 class TelnetServer extends EventEmitter
+
   # 
   # options.setClientSize = ({height:h, width:w}) ->
   #
@@ -94,29 +95,37 @@ class TelnetServer extends EventEmitter
 
     onCommand = (command) =>
       console.log 'command', (commandName b for b in command)
+
       if commandIs command, constants.WONT, constants.NAWS
         options.setClientSize? {width: -1, height: -1}
+
       if commandIs command, constants.WILL, constants.NAWS
         if options.setClientSize?
           sendCommand socket, constants.IAC, constants.DO, constants.NAWS
         else 
           sendCommand socket, constants.IAC, constants.DONT, constants.NAWS
+
       if commandIs command, constants.NAWS
         width = command[1] << 8
         width |= command[2]
         height = command[3] << 8
         height |= command[4]
         options.setClientSize? {width: width, height: height}
+
       if commandIs command, constants.DO, constants.ECHO
         @echo = true
         sendCommand socket, constants.IAC, constants.WILL, constants.ECHO
+
       if commandIs command, constants.DONT, constants.ECHO
         @echo = false
         sendCommand socket, constants.IAC, constants.WONT, constants.ECHO
+
       if commandIs command, constants.DO, constants.SGA
         sendCommand socket, constants.IAC, constants.WILL, constants.SGA
+
       if commandIs command, constants.WILL, constants.TTYPE
         sendCommand socket, constants.IAC, constants.SB, constants.TTYPE, constants.ECHO, constants.IAC, constants.SE
+
       if commandIs command, constants.TTYPE, 0 
         ttype = command.slice(2, command.length).toString 'ascii'
         if @ttypes[@ttypes.length-1] is ttype
