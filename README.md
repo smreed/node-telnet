@@ -19,17 +19,18 @@ Example Server
 ========
 
 Example code in coffee-script that reports the client height-width.
+
 ```coffeescript
-    net = require 'net'
-    {TelnetServer} = require '../lib/telnet'
+net = require 'net'
+{TelnetServer} = require '../lib/telnet'
 
-    server = net.createServer (socket) ->
-      options =
-        setClientSize: (dim) ->
-          console.log "width=#{dim.width}, height=#{dim.height}"
-          socket.end 'Thanks!'
+server = net.createServer (socket) ->
+  options =
+    setClientSize: (dim) ->
+      console.log "width=#{dim.width}, height=#{dim.height}"
+      socket.end 'Thanks!'
 
-      telnet = new TelnetServer socket, options
+  telnet = new TelnetServer socket, options
 
-    server.listen 8888
+server.listen 8888
 ```
