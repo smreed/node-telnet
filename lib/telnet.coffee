@@ -1,8 +1,6 @@
-net = require 'net'
 {EventEmitter} = require 'events'
 
 constants =
-  BINARY: 0    # Binary
   ECHO: 1      # Echo
   SGA: 3       # Suppress Go Ahead
   TTYPE: 24    # Terminal Type
@@ -77,42 +75,58 @@ commandIs = (command, tests...) ->
   return result
 
 sendCommand = (socket, command...) ->
-  socket.write new Buffer command
+  buffer = new Buffer command
+  socket.write buffer, 'binary'
 
 commandName = (b) ->
   names[b] ? b
 
 class TelnetServer extends EventEmitter
+
+  # 
+  # options.setClientSize = ({height:h, width:w}) ->
+  #
   constructor: (socket, options = {}) ->
     @echo = false
     @ttypes = []
-    state = new IACState()
+    @state = new IACState()
 
     # socket.setNoDelay true
 
     onCommand = (command) =>
       console.log 'command', (commandName b for b in command)
+
       if commandIs command, constants.WONT, constants.NAWS
         options.setClientSize? {width: -1, height: -1}
-      #if commandIs command, constants.WILL, constants.NAWS
-        # do nothing yet
+
+      if commandIs command, constants.WILL, constants.NAWS
+        if options.setClientSize?
+          sendCommand socket, constants.IAC, constants.DO, constants.NAWS
+        else 
+          sendCommand socket, constants.IAC, constants.DONT, constants.NAWS
+
       if commandIs command, constants.NAWS
         width = command[1] << 8
         width |= command[2]
         height = command[3] << 8
         height |= command[4]
         options.setClientSize? {width: width, height: height}
+
       if commandIs command, constants.DO, constants.ECHO
         @echo = true
         sendCommand socket, constants.IAC, constants.WILL, constants.ECHO
+
       if commandIs command, constants.DONT, constants.ECHO
         @echo = false
         sendCommand socket, constants.IAC, constants.WONT, constants.ECHO
+
       if commandIs command, constants.DO, constants.SGA
         sendCommand socket, constants.IAC, constants.WILL, constants.SGA
+
       if commandIs command, constants.WILL, constants.TTYPE
         sendCommand socket, constants.IAC, constants.SB, constants.TTYPE, constants.ECHO, constants.IAC, constants.SE
-      if commandIs command, constants.TTYPE, constants.BINARY
+
+      if commandIs command, constants.TTYPE, 0 
         ttype = command.slice(2, command.length).toString 'ascii'
         if @ttypes[@ttypes.length-1] is ttype
           console.log @ttypes
@@ -121,16 +135,16 @@ class TelnetServer extends EventEmitter
           sendCommand socket, constants.IAC, constants.SB, constants.TTYPE, constants.ECHO, constants.IAC, constants.SE
 
 
-    state.on 'iac', onCommand
-    state.on 'iac_sb', onCommand
+    @state.on 'iac', onCommand
+    @state.on 'iac_sb', onCommand
 
-    socket.on 'data', (chunk) ->
-      state.readBytes chunk
+    socket.on 'data', (chunk) =>
+      @state.readBytes chunk
     
-    state.on 'data', (chunk) =>
+    @state.on 'data', (chunk) =>
       @emit 'data', chunk
     
-    state.on 'data', (chunk) =>
+    @state.on 'data', (chunk) =>
       if @echoOn()
         socket.write chunk
 
@@ -141,15 +155,6 @@ class TelnetServer extends EventEmitter
 
   echoOn: -> @echo
   echoOff: -> !@echo
+  clientTerminalTypes: -> @ttypes
 
-server = net.createServer (socket) ->
-  telnet = new TelnetServer socket,
-    setClientSize: (dim) -> 
-      console.log "Client reports dimensions of w=#{dim.width},h=#{dim.height}"
-      for n in [1..dim.height]
-        socket.write new Buffer '\r\n'
-        socket.write new Buffer "#{(n - 1)%10}" for i in [1..dim.width]
-  telnet.on 'data', (data) ->
-    console.log 'data:', data.toString 'ascii'
-
-server.listen 8888
+module.exports.TelnetServer = TelnetServer
