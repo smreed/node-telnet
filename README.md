@@ -19,7 +19,7 @@ Example Server
 ========
 
 Example code in coffee-script that reports the client height-width.
-```coffee
+```coffeescript
     net = require 'net'
     {TelnetServer} = require '../lib/telnet'
 
