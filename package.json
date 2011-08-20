@@ -1,6 +1,6 @@
-{ "name" : "telnet"
+{ "name" : "telnet-protocol"
 , "description" : "Telnet protocol support"
-, "keywords" : [ "telnet" ]
+, "keywords" : [ "telnet", "protocol" ]
 , "version" : "0.1.0"
 , "author" : "Steve Reed <steven.m.reed@gmail.com>"
 , "contributors" : []
