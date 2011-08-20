@@ -81,43 +81,48 @@ sendCommand = (socket, command...) ->
 commandName = (b) ->
   names[b] ? b
 
+defaultOptions =
+  naws: true
+  ttypes: true
+
 class TelnetServer extends EventEmitter
 
   # 
-  # options.setClientSize = ({height:h, width:w}) ->
+  # options.naws = true to negotiate about window size (default: true)
+  # options.ttypes = true to query for terminal types (default: true)
   #
-  constructor: (socket, options = {}) ->
+  constructor: (@socket, @options = defaultOptions) ->
     @echo = false
     @ttypes = []
     @state = new IACState()
 
-    # socket.setNoDelay true
-
     onCommand = (command) =>
-      console.log 'command', (commandName b for b in command)
+      # console.log 'command', (commandName b for b in command)
 
-      if commandIs command, constants.WONT, constants.NAWS
-        options.setClientSize? {width: -1, height: -1}
+      if @options.naws and commandIs command, constants.WONT, constants.NAWS
+        @clientDimensions = {width: -1, height: -1}
+        @emit 'window_size', @clientDimensions
 
       if commandIs command, constants.WILL, constants.NAWS
-        if options.setClientSize?
-          sendCommand socket, constants.IAC, constants.DO, constants.NAWS
-        else 
-          sendCommand socket, constants.IAC, constants.DONT, constants.NAWS
+        doOrDoNot = if @options.naws then constants.DO else contants.DONT
+        sendCommand socket, constants.IAC, doOrDoNot, constants.NAWS
 
       if commandIs command, constants.NAWS
         width = command[1] << 8
         width |= command[2]
         height = command[3] << 8
         height |= command[4]
-        options.setClientSize? {width: width, height: height}
+        @clientDimensions = {width: width, height: height}
+        @emit 'window_size', @clientDimensions
 
       if commandIs command, constants.DO, constants.ECHO
         @echo = true
+        @emit 'echo', @echo
         sendCommand socket, constants.IAC, constants.WILL, constants.ECHO
 
       if commandIs command, constants.DONT, constants.ECHO
         @echo = false
+        @emit 'echo', @echo
         sendCommand socket, constants.IAC, constants.WONT, constants.ECHO
 
       if commandIs command, constants.DO, constants.SGA
@@ -129,11 +134,10 @@ class TelnetServer extends EventEmitter
       if commandIs command, constants.TTYPE, 0 
         ttype = command.slice(2, command.length).toString 'ascii'
         if @ttypes[@ttypes.length-1] is ttype
-          console.log @ttypes
+          @emit 'ttypes', @ttypes
         else
           @ttypes.push ttype
           sendCommand socket, constants.IAC, constants.SB, constants.TTYPE, constants.ECHO, constants.IAC, constants.SE
-
 
     @state.on 'iac', onCommand
     @state.on 'iac_sb', onCommand
@@ -148,13 +152,28 @@ class TelnetServer extends EventEmitter
       if @echoOn()
         socket.write chunk
 
-    if typeof options.setClientSize is 'function'
-      sendCommand socket, constants.IAC, constants.DO, constants.NAWS
+    sendCommand socket, constants.IAC, constants.DO, constants.NAWS if @options.naws
+    sendCommand socket, constants.IAC, constants.DO, constants.TTYPE  if @options.ttypes
 
-    sendCommand socket, constants.IAC, constants.DO, constants.TTYPE 
-
-  echoOn: -> @echo
-  echoOff: -> !@echo
+  echo: -> @echo
   clientTerminalTypes: -> @ttypes
+  clientWindowSize: -> @clientDimensions
+
+  promptForSecret: (prompt, callback) ->
+    sendCommand @socket, constants.IAC, constants.WILL, constants.ECHO
+    @state.removeAllListeners 'data'
+    @state.once 'data', (secret) =>
+      secret = secret.toString 'utf8'
+      secret = secret.replace c, '' for c in ['\r', '\n']
+      @socket.write '\r\n'
+      @state.on 'data', (chunk) =>
+        @emit 'data', chunk
+      sendCommand @socket, constants.IAC, constants.WONT, constants.ECHO
+      callback secret 
+    @socket.write prompt
+
+  writeLn: (line) ->
+    @socket.write line
+    @socket.write '\r\n'
 
 module.exports.TelnetServer = TelnetServer

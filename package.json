@@ -1,0 +1,18 @@
+{ "name" : "telnet"
+, "description" : "Telnet protocol support"
+, "keywords" : [ "telnet" ]
+, "version" : "0.1.0"
+, "author" : "Steve Reed <steven.m.reed@gmail.com>"
+, "contributors" : []
+, "repository" : { "type" : "git"
+                 , "url" : "http://github.com/year2013/node-telnet.git" }
+, "files" : [ "./lib" ]
+, "bugs" : { "web" : "http://github.com/year2013/node-telnet/issues" }
+, "os" : []
+, "config" : { "native" : false }
+, "main" : "./lib/telnet.js"
+, "directories" : { "lib" : "./lib" }
+, "engines" : { "node" : ">=0.4.0" }
+, "licenses" : [ { "type" : "Apache License, Version 2.0"
+                 , "url" : "http://www.apache.org/licenses/LICENSE-2.0" } ]
+}

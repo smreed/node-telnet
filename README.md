@@ -18,7 +18,7 @@ Planned Features
 Example Server
 ========
 
-Example code in coffee-script that reports the client height-width.
+Example code in coffee-script that reports the client window dimensions and then ends the session.
 
 ```coffeescript
 net = require 'net'
@@ -26,11 +26,12 @@ net = require 'net'
 
 server = net.createServer (socket) ->
   options =
-    setClientSize: (dim) ->
-      console.log "width=#{dim.width}, height=#{dim.height}"
-      socket.end 'Thanks!'
+    naws: true
 
   telnet = new TelnetServer socket, options
+  telnet.on 'window_size', (dim) ->
+    console.log "width=#{dim.width}, height=#{dim.height}"
+    socket.end 'Thanks!'
 
 server.listen 8888
 ```
