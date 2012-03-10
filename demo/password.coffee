@@ -11,7 +11,7 @@ server = net.createServer (socket) ->
 
   telnet.promptForSecret 'type secret:', (secret) ->
     telnet.writeLn 'Thanks!'
-    socket.end()
+    socket.destroySoon()
     console.log "The secret is [#{secret}]"
 
 server.listen 8888
