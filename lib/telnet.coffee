@@ -149,14 +149,13 @@ class TelnetServer extends EventEmitter
       @emit 'data', chunk
     
     @state.on 'data', (chunk) =>
-	  # there are no echoOn() function in this class, typo?
-      if @echo()
+      if @echoOn()
         socket.write chunk
 
     sendCommand socket, constants.IAC, constants.DO, constants.NAWS if @options.naws
     sendCommand socket, constants.IAC, constants.DO, constants.TTYPE  if @options.ttypes
 
-  echo: -> @echo
+  echoOn: -> @echo
   clientTerminalTypes: -> @ttypes
   clientWindowSize: -> @clientDimensions
 
