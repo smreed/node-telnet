@@ -155,7 +155,7 @@ class TelnetServer extends EventEmitter
     sendCommand socket, constants.IAC, constants.DO, constants.NAWS if @options.naws
     sendCommand socket, constants.IAC, constants.DO, constants.TTYPE  if @options.ttypes
 
-  echo: -> @echo
+  echoOn: -> @echo
   clientTerminalTypes: -> @ttypes
   clientWindowSize: -> @clientDimensions
 
